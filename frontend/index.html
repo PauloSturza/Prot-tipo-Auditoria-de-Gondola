@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Auditoria Vendedor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              marca: '#1c64a5',
+            }
+          }
+        }
+      }
+    </script>
+</head>
+<body class="bg-gray-100 p-4 font-sans h-screen flex flex-col">
+
+    <div id="tela-login" class="max-w-sm mx-auto mt-20 w-full">
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-2xl font-bold mb-6 text-center text-marca">Acesso Promotor</h2>
+            <input id="email" type="email" placeholder="E-mail" value="teste@teste.com" class="w-full p-3 mb-4 border rounded bg-gray-50">
+            <input id="senha" type="password" placeholder="Senha" value="123" class="w-full p-3 mb-6 border rounded bg-gray-50">
+            <button onclick="fazerLogin()" class="w-full bg-marca text-white p-4 rounded font-bold text-lg">Entrar</button>
+            <p id="erro-login" class="text-red-500 text-center mt-4 hidden">Dados incorretos.</p>
+        </div>
+    </div>
+
+    <div id="tela-app" class="hidden flex-grow flex-col max-w-sm mx-auto w-full">
+        <h2 class="text-xl font-bold mb-4">Minhas Lojas (Hoje)</h2>
+        <div id="lista-lojas" class="space-y-3 mb-6"></div>
+        
+        <div id="modulo-camera" class="hidden flex-col items-center">
+            <p id="nome-loja-selecionada" class="font-bold mb-2 text-marca"></p>
+            <div class="w-full bg-black rounded-lg overflow-hidden relative mb-2 shadow-lg max-h-[55vh]">
+                <video id="video-preview" class="w-full h-full object-cover" autoplay playsinline></video>
+                
+                <div id="indicador-pronto" class="hidden absolute top-3 right-3 bg-black/60 px-3 py-1.5 rounded-full flex items-center space-x-2">
+                    <span class="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse"></span>
+                    <span class="text-white text-xs font-bold tracking-wider">PRONTA</span>
+                </div>
+            </div>
+            
+            <p id="status-texto" class="text-sm text-gray-600 mb-1 text-center font-semibold h-5"></p>
+            
+            <button id="btn-foto" class="w-full bg-gray-400 text-white p-4 rounded-full font-bold text-lg" disabled>Tirar Foto e Enviar</button>
+            
+            <button onclick="fecharCamera()" class="w-full mt-4 bg-transparent text-red-500 p-3 rounded-full font-bold text-lg border-2 border-red-500 active:bg-red-50">Cancelar</button>
+        </div>
+    </div>
+
+    <script>
+        
+        const API_URL = 'https://laptop-0sg8i9hh.tail29f6cd.ts.net:8443'; 
+        
+        let usuarioId = null;
+        let lojaIdSelecionada = null;
+        
+        const video = document.getElementById('video-preview');
+        const btnFoto = document.getElementById('btn-foto');
+        const statusTexto = document.getElementById('status-texto');
+
+        async function fazerLogin() {
+            try {
+                const res = await fetch(`${API_URL}/login/vendedor`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        email: document.getElementById('email').value, 
+                        senha: document.getElementById('senha').value
+                    })
+                });
+                
+                if(res.ok) {
+                    const user = await res.json();
+                    usuarioId = user.id;
+                    document.getElementById('tela-login').classList.add('hidden');
+                    document.getElementById('tela-app').classList.remove('hidden');
+                    document.getElementById('tela-app').classList.add('flex');
+                    carregarLojas();
+                } else {
+                    document.getElementById('erro-login').classList.remove('hidden');
+                }
+            } catch (e) {
+                alert("Erro ao conectar no servidor.");
+            }
+        }
+
+        async function carregarLojas() {
+            const res = await fetch(`${API_URL}/vendedor/${usuarioId}/lojas`);
+            const lojas = await res.json();
+            const container = document.getElementById('lista-lojas');
+            container.innerHTML = '';
+            
+            lojas.forEach(l => {
+                container.innerHTML += `
+                    <button onclick="abrirCamera(${l.id}, '${l.nome_fantasia}')" 
+                    class="w-full p-5 bg-white shadow-sm border rounded-lg text-left font-semibold text-gray-700 active:bg-gray-100">
+                    📍 ${l.nome_fantasia}
+                    </button>`;
+            });
+        }
+
+        async function abrirCamera(id, nomeFantasia) {
+            lojaIdSelecionada = id;
+            document.getElementById('lista-lojas').classList.add('hidden');
+            document.getElementById('modulo-camera').classList.remove('hidden');
+            document.getElementById('modulo-camera').classList.add('flex');
+            document.getElementById('nome-loja-selecionada').innerText = `Auditando: ${nomeFantasia}`;
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({video: {facingMode: 'environment'}});
+                video.srcObject = stream;
+                btnFoto.disabled = false;
+                btnFoto.classList.replace('bg-gray-400', 'bg-marca');
+                video.srcObject = stream;
+                btnFoto.disabled = false;
+                btnFoto.classList.replace('bg-gray-400', 'bg-marca');
+
+                statusTexto.innerText = ""; 
+                document.getElementById('indicador-pronto').classList.remove('hidden');
+            } catch (err) {
+                statusTexto.innerText = "Erro: Permita o acesso à câmera.";
+            }
+        }
+
+        function fecharCamera() {
+            
+            if (video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
+            }
+            
+            document.getElementById('indicador-pronto').classList.add('hidden');
+            document.getElementById('modulo-camera').classList.add('hidden');
+            document.getElementById('modulo-camera').classList.remove('flex');
+            document.getElementById('lista-lojas').classList.remove('hidden');
+
+            btnFoto.classList.remove('bg-marca', 'bg-yellow-500', 'bg-green-600');
+            btnFoto.classList.add('bg-gray-400');
+            btnFoto.innerText = "Tirar Foto e Enviar";
+            btnFoto.disabled = true;
+            statusTexto.innerText = "Posicione a gôndola e aguarde o GPS...";
+        }
+
+        btnFoto.onclick = async () => {
+            btnFoto.disabled = true;
+            btnFoto.classList.replace('bg-marca', 'bg-yellow-500');
+            document.getElementById('indicador-pronto').classList.add('hidden');
+            btnFoto.innerText = "Processando...";
+            statusTexto.innerText = "Capturando GPS...";
+
+            video.pause();
+
+            navigator.geolocation.getCurrentPosition(async (pos) => {
+                statusTexto.innerText = "Enviando imagem...";
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth; 
+                canvas.height = video.videoHeight;
+                canvas.getContext('2d').drawImage(video, 0, 0);
+                
+                canvas.toBlob(async (blob) => {
+                    const fd = new FormData();
+                    fd.append('vendedor_id', usuarioId);
+                    fd.append('loja_id', lojaIdSelecionada);
+                    fd.append('lat', pos.coords.latitude);
+                    fd.append('lng', pos.coords.longitude);
+                    fd.append('foto', blob, `visita_${Date.now()}.jpg`);
+                    
+                    try {
+                        await fetch(`${API_URL}/upload`, {method: 'POST', body: fd});
+                        btnFoto.classList.replace('bg-yellow-500', 'bg-green-600');
+                        btnFoto.innerText = "Sucesso!";
+                        statusTexto.innerText = "Visita registrada no sistema.";
+                        
+                        setTimeout(() => {
+                            if (video.srcObject) {
+                                video.srcObject.getTracks().forEach(track => track.stop());
+                                video.srcObject = null;
+                            }
+
+                            document.getElementById('modulo-camera').classList.add('hidden');
+                            document.getElementById('modulo-camera').classList.remove('flex');
+                            document.getElementById('lista-lojas').classList.remove('hidden');
+
+                            btnFoto.classList.replace('bg-green-600', 'bg-gray-400');
+                            btnFoto.innerText = "Tirar Foto e Enviar";
+                            btnFoto.disabled = true;
+                            statusTexto.innerText = "Posicione a gôndola e aguarde o GPS...";
+                        }, 2000);
+
+                    } catch (e) {
+                        statusTexto.innerText = "Erro ao enviar.";
+                        btnFoto.classList.replace('bg-yellow-500', 'bg-marca');
+                        btnFoto.innerText = "Tentar novamente";
+                        btnFoto.disabled = false;
+                        video.play();
+                    }
+                }, 'image/jpeg', 0.8);
+            }, (erro) => {
+                statusTexto.innerText = "Erro de GPS. Ative a localização.";
+                btnFoto.classList.replace('bg-yellow-500', 'bg-marca');
+                btnFoto.innerText = "Tentar novamente";
+                btnFoto.disabled = false;
+                video.play();
+            }, { enableHighAccuracy: true });
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Admin - Gondola SaaS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans flex h-screen overflow-hidden">
+
+    <aside class="w-64 bg-gray-900 text-white flex flex-col">
+        <div class="p-6 text-xl font-bold border-b border-gray-800 text-center">
+            Pão de Alho Admin
+        </div>
+        <nav class="flex-grow p-4 space-y-2">
+            <button onclick="mudarAba('relatorios')" class="w-full text-left p-3 hover:bg-gray-800 rounded font-semibold transition">Relatórios de Visitas</button>
+            <button onclick="mudarAba('vendedores')" class="w-full text-left p-3 hover:bg-gray-800 rounded font-semibold transition">Gerenciar Vendedores</button>
+            <button onclick="mudarAba('lojas')" class="w-full text-left p-3 hover:bg-gray-800 rounded font-semibold transition">Gerenciar Lojas</button>
+            <button onclick="mudarAba('vinculos')" class="w-full text-left p-3 hover:bg-gray-800 rounded font-semibold transition">Vincular Lojas</button>
+        </nav>
+    </aside>
+
+    <main class="flex-grow overflow-y-auto p-8 relative">
+
+        <section id="aba-relatorios" class="aba-conteudo block">
+            <h2 class="text-3xl font-bold mb-6 text-gray-800">Relatórios de Visitas</h2>
+            
+            <div class="bg-white p-4 rounded-lg shadow-sm mb-6 flex gap-4 items-end border border-gray-200">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Data Inicial</label>
+                    <input type="date" id="filtro-inicio" class="border border-gray-300 p-2 rounded bg-gray-50">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Data Final</label>
+                    <input type="date" id="filtro-fim" class="border border-gray-300 p-2 rounded bg-gray-50">
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="carregarVisitas()" class="bg-blue-600 text-white px-6 py-2 rounded font-bold hover:bg-blue-700 transition">
+                        Filtrar na Tela
+                    </button>
+                    
+                    <button onclick="gerarPDFCobertura()" class="bg-red-600 text-white px-6 py-2 rounded font-bold hover:bg-red-700 transition flex items-center gap-2">
+                        Gerar PDF de Cobertura
+                    </button>
+                </div>
+            </div>
+
+            <div id="lista-visitas" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                </div>
+        </section>
+
+        <section id="aba-vendedores" class="aba-conteudo hidden">
+            <h2 class="text-3xl font-bold mb-6 text-gray-800">Vendedores</h2>
+            
+            <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+                <h3 class="text-lg font-bold mb-4">Cadastrar Novo Vendedor</h3>
+                <form id="form-vendedor" class="flex gap-4 items-end" onsubmit="event.preventDefault(); salvarVendedor();">
+                    <input type="text" id="vend-nome" placeholder="Nome" required class="border p-2 rounded w-full">
+                    <input type="email" id="vend-email" placeholder="E-mail" required class="border p-2 rounded w-full">
+                    <input type="password" id="vend-senha" placeholder="Senha" required class="border p-2 rounded w-full">
+                    <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded font-bold hover:bg-green-700 whitespace-nowrap">Cadastrar</button>
+                </form>
+            </div>
+
+            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4 flex gap-4">
+                <input type="text" id="filtro-nome-vend" list="lista-nomes-vend" oninput="filtrarVendedores()" placeholder="Buscar por nome..." class="border p-2 rounded flex-grow">
+                <datalist id="lista-nomes-vend"></datalist> <select id="filtro-status-vend" onchange="filtrarVendedores()" class="border p-2 rounded w-48">
+                    <option value="todos">Todos os Status</option>
+                    <option value="ativos">Apenas Ativos 🟢</option>
+                    <option value="inativos">Apenas Inativos 🔴</option>
+                </select>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden pb-16">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-gray-100 text-gray-600">
+                        <tr>
+                            <th class="p-3 border-b">ID</th>
+                            <th class="p-3 border-b">Nome</th>
+                            <th class="p-3 border-b">E-mail</th>
+                            <th class="p-3 border-b">Status</th>
+                            <th class="p-3 border-b text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-vendedores" class="divide-y divide-gray-100"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="aba-lojas" class="aba-conteudo hidden">
+            <h2 class="text-3xl font-bold mb-6 text-gray-800">Lojas</h2>
+            
+            <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+                <h3 class="text-lg font-bold mb-4">Cadastrar Nova Loja</h3>
+                <form id="form-loja" class="flex gap-4 items-end" onsubmit="event.preventDefault(); salvarLoja();">
+                    <input type="text" id="loja-nome" placeholder="Nome Fantasia" required class="border p-2 rounded w-full">
+                    <input type="number" step="any" id="loja-lat" placeholder="Latitude (ex: -23.55)" required class="border p-2 rounded w-full">
+                    <input type="number" step="any" id="loja-lng" placeholder="Longitude (ex: -46.63)" required class="border p-2 rounded w-full">
+                    <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded font-bold hover:bg-green-700 whitespace-nowrap">Cadastrar</button>
+                </form>
+            </div>
+
+            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4 flex gap-4">
+                <input type="text" id="filtro-nome-loja" list="lista-nomes-lojas" oninput="filtrarLojas()" placeholder="Buscar por loja..." class="border p-2 rounded w-1/3">
+                <datalist id="lista-nomes-lojas"></datalist>
+
+                <input type="text" id="filtro-promotor-loja" list="lista-nomes-promotores" oninput="filtrarLojas()" placeholder="Buscar por promotor..." class="border p-2 rounded w-1/3">
+                <datalist id="lista-nomes-promotores"></datalist>
+
+                <select id="filtro-status-loja" onchange="filtrarLojas()" class="border p-2 rounded w-1/3">
+                    <option value="todos">Todos os Status</option>
+                    <option value="ativas">Apenas Ativas 🟢</option>
+                    <option value="inativas">Apenas Inativas 🔴</option>
+                </select>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden pb-16">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-gray-100 text-gray-600">
+                            <tr>
+                                <th class="p-3 border-b">ID</th>
+                                <th class="p-3 border-b">Nome Fantasia</th>
+                                <th class="p-3 border-b">Coordenadas</th>
+                                <th class="p-3 border-b">Promotores</th>
+                                <th class="p-3 border-b">Status</th>
+                                <th class="p-3 border-b text-center">Ações</th>
+                            </tr>
+                    </thead>
+                    <tbody id="tabela-lojas" class="divide-y divide-gray-100"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="aba-vinculos" class="aba-conteudo hidden">
+            <h2 class="text-3xl font-bold mb-6 text-gray-800">Gestão de Rotas (Vínculos)</h2>
+            
+            <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+                <h3 class="text-lg font-bold mb-4 text-blue-800">Vincular Novo Vendedor à Loja</h3>
+                <form id="form-vinculo" class="flex gap-4 items-end" onsubmit="event.preventDefault(); salvarVinculo();">
+                    <div class="w-full">
+                        <label class="block text-sm font-medium mb-1">Vendedor</label>
+                        <select id="select-vendedor" class="border p-2 rounded w-full bg-white"></select>
+                    </div>
+                    <div class="w-full">
+                        <label class="block text-sm font-medium mb-1">Loja</label>
+                        <select id="select-loja" class="border p-2 rounded w-full bg-white"></select>
+                    </div>
+                    <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded font-bold hover:bg-blue-700 whitespace-nowrap">Criar Rota</button>
+                </form>
+            </div>
+
+            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4 flex gap-4">
+                <input type="text" id="filtro-vinculo-vend" oninput="filtrarVinculos()" placeholder="Filtrar por Vendedor..." class="border p-2 rounded w-full">
+                <input type="text" id="filtro-vinculo-loja" oninput="filtrarVinculos()" placeholder="Filtrar por Loja..." class="border p-2 rounded w-full">
+            </div>
+
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 pb-16">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-gray-100 text-gray-600">
+                        <tr>
+                            <th class="p-3 border-b">Promotor / Vendedor</th>
+                            <th class="p-3 border-b">Loja Atendida</th>
+                            <th class="p-3 border-b text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-vinculos" class="divide-y divide-gray-100"></tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <script src="js/app.js"></script>
+    <script src="js/relatorios.js"></script>
+    <script src="js/vendedores.js"></script>
+    <script src="js/lojas.js"></script>
+    <script src="js/vinculos.js"></script>
+    <script>
+        carregarVisitas();
+    </script>
+    
+</body>
+</html>
